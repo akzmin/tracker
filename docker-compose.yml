@@ -1,0 +1,105 @@
+version: "3.9"
+
+services:
+  tracker-zookeeper:
+    image: wurstmeister/zookeeper
+    ports:
+      - 2181
+    restart: unless-stopped
+    networks:
+      - tracker-backend
+
+  tracker-kafka:
+    image: wurstmeister/kafka
+    ports:
+      - 9092
+    depends_on:
+      - tracker-zookeeper
+    environment:
+      DOCKER_API_VERSION: 1.22
+      KAFKA_ADVERTISED_HOST_NAME: tracker-kafka
+      KAFKA_ADVERTISED_PORT: 9092
+      KAFKA_ZOOKEEPER_CONNECT: tracker-zookeeper:2181
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      KAFKA_CREATE_TOPICS: topic-tracking-events:1:1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+    networks:
+      - tracker-backend
+
+  tracker-clickhouse:
+    image: yandex/clickhouse-server
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    restart: always
+    networks:
+      - tracker-backend
+    ports:
+      - 8123
+      # - 9009:9000
+      # - 8123:8123
+      # - 9004:9004
+    depends_on:
+      - tracker-kafka
+    volumes:
+      - ./scripts/ch:/docker-entrypoint-initdb.d
+    #   - ./data/clickhouse:/var/lib/clickhouse
+    environment:
+      CLICKHOUSE_DB: tracker
+      MYSQL_PORT: 9004
+
+  tracker-postgres:
+    image: postgres:latest
+    restart: always
+    ports:
+      - 5432
+    volumes:
+      - ./scripts/pg:/docker-entrypoint-initdb.d
+    #   - ./data/postgres:/var/lib/postgresql/data
+    networks:
+      - tracker-backend
+    environment:
+      POSTGRES_PASSWORD: development
+      POSTGRES_DB: tracker
+      PGDATA: /var/lib/postgresql/data/tracker/
+
+  tracker-api-service:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    volumes:
+      - ./src:/tracker/src
+      - /tracker/node_modules
+    # command: tail -f /dev/null
+    # command: sh -c "NODE_ENV=production npm run start"
+    command: sh -c "npm run start:dev"
+    ports:
+      - 8888:8888
+    restart: on-failure
+    networks:
+      - tracker-backend
+      - tracker-api
+    depends_on:
+      - tracker-kafka
+      - tracker-clickhouse
+      - tracker-postgres
+    environment:
+      API_SERVER_PORT: 8888
+      PG_DATABASE_URI: postgres://postgres:development@tracker-postgres/tracker
+      CH_DATABASE_URL: http://tracker-clickhouse
+      CH_DATABASE_NAME: tracker
+      CH_DATABASE_PORT: 8123
+      KAFKA_SERVER: tracker-kafka:9092
+      KAFKA_TOPIC_TRACKING_EVENTS: topic-tracking-events
+
+networks:
+  tracker-backend:
+    name: tracker-backend
+    driver: bridge
+
+  tracker-api:
+    name: tracker-api
+    driver: bridge
