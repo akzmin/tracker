@@ -1,34 +1,34 @@
 version: "3.9"
 
 services:
-  tracker-zookeeper:
+  test-tracker-zookeeper:
     image: wurstmeister/zookeeper
     ports:
       - 2181
     restart: unless-stopped
     networks:
-      - tracker-backend
+      - test-tracker-backend
 
-  tracker-kafka:
+  test-tracker-kafka:
     image: wurstmeister/kafka
     ports:
       - 9092
     depends_on:
-      - tracker-zookeeper
+      - test-tracker-zookeeper
     environment:
       DOCKER_API_VERSION: 1.22
-      KAFKA_ADVERTISED_HOST_NAME: tracker-kafka
+      KAFKA_ADVERTISED_HOST_NAME: test-tracker-kafka
       KAFKA_ADVERTISED_PORT: 9092
-      KAFKA_ZOOKEEPER_CONNECT: tracker-zookeeper:2181
+      KAFKA_ZOOKEEPER_CONNECT: test-tracker-zookeeper:2181
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
       KAFKA_CREATE_TOPICS: topic-tracking-events:1:1
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped
     networks:
-      - tracker-backend
+      - test-tracker-backend
 
-  tracker-clickhouse:
+  test-tracker-clickhouse:
     image: yandex/clickhouse-server
     ulimits:
       nofile:
@@ -36,37 +36,32 @@ services:
         hard: 262144
     restart: always
     networks:
-      - tracker-backend
+      - test-tracker-backend
     ports:
       - 8123
-      # - 9009:9000
-      # - 8123:8123
-      # - 9004:9004
     depends_on:
-      - tracker-kafka
+      - test-tracker-kafka
     volumes:
       - ./scripts/ch:/docker-entrypoint-initdb.d
-    #   - ./data/clickhouse:/var/lib/clickhouse
     environment:
       CLICKHOUSE_DB: tracker
       MYSQL_PORT: 9004
 
-  tracker-postgres:
+  test-tracker-postgres:
     image: postgres:latest
     restart: always
     ports:
       - 5432
     volumes:
       - ./scripts/pg:/docker-entrypoint-initdb.d
-    #   - ./data/postgres:/var/lib/postgresql/data
     networks:
-      - tracker-backend
+      - test-tracker-backend
     environment:
       POSTGRES_PASSWORD: development
       POSTGRES_DB: tracker
       PGDATA: /var/lib/postgresql/data/tracker/
 
-  tracker-api-service:
+  test-tracker-api:
     build:
       context: .
       dockerfile: ./Dockerfile
@@ -74,33 +69,31 @@ services:
       - ./src:/tracker/src
       - ./tests:/tracker/tests
       - /tracker/node_modules
-    # command: tail -f /dev/null
-    # command: sh -c "NODE_ENV=production npm run start"
-    command: sh -c "npm run start:dev"
+    command: sh -c "npm run test"
     ports:
-      - 8888:8888
-    restart: on-failure
+      - 8888
     networks:
-      - tracker-backend
-      - tracker-api
+      - test-tracker-backend
+      - test-tracker-api
     depends_on:
-      - tracker-kafka
-      - tracker-clickhouse
-      - tracker-postgres
+      - test-tracker-kafka
+      - test-tracker-clickhouse
+      - test-tracker-postgres
     environment:
+      NODE_ENV: test
       API_SERVER_PORT: 8888
-      PG_DATABASE_URI: postgres://postgres:development@tracker-postgres/tracker
-      CH_DATABASE_URL: http://tracker-clickhouse
+      PG_DATABASE_URI: postgres://postgres:development@test-tracker-postgres/tracker
+      CH_DATABASE_URL: http://test-tracker-clickhouse
       CH_DATABASE_NAME: tracker
       CH_DATABASE_PORT: 8123
-      KAFKA_SERVER: tracker-kafka:9092
+      KAFKA_SERVER: test-tracker-kafka:9092
       KAFKA_TOPIC_TRACKING_EVENTS: topic-tracking-events
 
 networks:
-  tracker-backend:
-    name: tracker-backend
+  test-tracker-backend:
+    name: test-tracker-backend
     driver: bridge
 
-  tracker-api:
-    name: tracker-api
+  test-tracker-api:
+    name: test-tracker-api
     driver: bridge

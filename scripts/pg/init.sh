@@ -15,4 +15,6 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname="$POSTGRES_DB"<<-EO
    INSERT INTO trackers VALUES (DEFAULT, DEFAULT, 'value-3');
    INSERT INTO trackers VALUES (DEFAULT, DEFAULT, 'value-4');
    INSERT INTO trackers VALUES (DEFAULT, DEFAULT, 'value-5');
+
+   INSERT INTO trackers VALUES (DEFAULT, '0213db1a-e739-4b95-8b51-ce5234f09d8e', 'test-value');
 EOSQL

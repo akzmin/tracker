@@ -1,0 +1,8 @@
+{
+  "verbose": false,
+  "silent": false,
+  "transform": {},
+  "testEnvironment": "node",
+  "setupFilesAfterEnv": ["jest-extended"],
+  "testPathIgnorePatterns": []
+}

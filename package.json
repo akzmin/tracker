@@ -9,9 +9,9 @@
     "node": ">=16.13.2"
   },
   "scripts": {
-    "start": "node src/app.js",
-    "start:dev": "nodemon src/app.js",
-    "test": "echo no test"
+    "start": "node src/index.js",
+    "start:dev": "nodemon src/index.js",
+    "test": "jest --detectOpenHandles --passWithNoTests ./tests"
   },
   "dependencies": {
     "cookie-parser": "1.4.3",
@@ -29,8 +29,11 @@
   "devDependencies": {
     "nodemon": "2.0.15",
     "cross-env": "5.1.4",
-    "supertest": "3.0.0",
-    "supertest-as-promised": "4.0.2"
+    "axios": "0.25.0",
+    "nock": "13.2.2",
+    "jest": "27.4.7",
+    "jest-cli": "27.4.7",
+    "jest-extended": "1.2.0"
   },
   "license": "MIT"
 }

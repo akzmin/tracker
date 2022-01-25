@@ -12,6 +12,7 @@ module.exports = ({
     ({ name, getModel }) => Container.set(name, getModel({ sequelize: sequelizeInstance }))
   )
 
+  Container.set('sequelizeInstance', sequelizeInstance)
   Container.set('kafkaProducer', kafkaProducer)
   Container.set('trackerService', new TrackerService({
     kafkaProducer,
